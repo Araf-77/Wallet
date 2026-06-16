@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Vault — Personal Finance</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<nav class="sidebar">
+  <div class="logo"><div class="logo-icon">💎</div>Vault</div>
+  <div class="nav-label">Menu</div>
+  <div class="nav-item active" onclick="showView('dashboard')"><span class="icon">📊</span> Dashboard</div>
+  <div class="nav-item" onclick="showView('transactions')"><span class="icon">💸</span> Transactions</div>
+  <div class="nav-item" onclick="showView('reports')"><span class="icon">📈</span> Reports</div>
+  <div class="nav-label" style="margin-top:16px">Settings</div>
+  <div class="nav-item" onclick="showView('settings')"><span class="icon">⚙️</span> Customize</div>
+  <div class="sidebar-bottom">
+    <div class="user-chip">
+      <div class="avatar">A</div>
+      <div class="user-info">
+        <div class="user-name">Araf</div>
+        <div class="user-plan">Personal</div>
+      </div>
+    </div>
+  </div>
+</nav>
+
+<!-- DASHBOARD -->
+<div class="main active-view" id="view-dashboard">
+  <div class="topbar">
+    <div class="page-title">Dashboard</div>
+    <div class="topbar-right">
+      <div class="month-nav">
+        <button onclick="changeMonth(-1)">&#8249;</button>
+        <span id="month-label">June 2026</span>
+        <button onclick="changeMonth(1)">&#8250;</button>
+      </div>
+      <button class="btn btn-primary" onclick="openModal()">+ Add Transaction</button>
+    </div>
+  </div>
+  <div class="content">
+    <div class="stat-grid" style="grid-template-columns:repeat(4,1fr)">
+      <div class="stat-card c1"><div class="stat-label">Total Balance</div><div class="stat-value" id="stat-balance">৳0</div><div class="stat-change pos">All time net</div></div>
+      <div class="stat-card c2"><div class="stat-label">Income</div><div class="stat-value pos" id="stat-income">৳0</div><div class="stat-change" style="color:var(--muted)">This month</div></div>
+      <div class="stat-card c3"><div class="stat-label">Expenses</div><div class="stat-value neg" id="stat-expense">৳0</div><div class="stat-change" style="color:var(--muted)">This month</div></div>
+      <div class="stat-card c4"><div class="stat-label">🤝 Lent Money</div><div class="stat-value" id="stat-lent">৳0</div><div class="stat-change" id="stat-lent-sub" style="color:var(--muted)">Net owed to you</div></div>
+    </div>
+    <!-- WALLET BREAKDOWN -->
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header"><div class="panel-title">💳 My Money</div><div style="font-size:12px;color:var(--muted)">Where your balance sits</div></div>
+      <div class="wallet-grid" id="wallet-grid"></div>
+    </div>
+    <!-- LENT MONEY -->
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-header">
+        <div class="panel-title">🤝 Lent Money</div>
+        <div style="display:flex;align-items:center;gap:10px">
+          <div class="debt-tabs" id="debt-tabs">
+            <button class="debt-tab active" onclick="setDebtFilter('all',this)">All</button>
+            <button class="debt-tab" onclick="setDebtFilter('lent',this)">Lent</button>
+            <button class="debt-tab" onclick="setDebtFilter('borrowed',this)">Borrowed</button>
+          </div>
+          <button class="btn btn-primary" style="padding:7px 12px" onclick="openDebtModal()">+</button>
+        </div>
+      </div>
+      <div class="debt-note">Tracked separately from your wallet — these amounts never count toward your income or expenses.</div>
+      <div class="debt-list" id="debt-list"></div>
+    </div>
+    <div class="three-col">
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Daily Spending</div><span class="badge badge-blue">This Month</span></div>
+        <div class="chart-wrap"><canvas id="spendingChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-header"><div class="panel-title">Recent Transactions</div><button class="btn btn-ghost" style="padding:5px 10px;font-size:12px" onclick="showView('transactions')">See all</button></div>
+        <div id="recent-tx-list"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- TRANSACTIONS -->
+<div class="main" id="view-transactions">
+  <div class="topbar">
+    <div class="page-title">Transactions</div>
+    <div class="topbar-right">
+      <select class="form-input" style="width:140px;padding:7px 12px" id="tx-filter" onchange="renderTransactions()">
+        <option value="all">All Types</option>
+        <option value="expense">Expenses</option>
+        <option value="income">Income</option>
+        <option value="transfer">Transfers</option>
+      </select>
+      <button class="btn btn-primary" onclick="openModal()">+ Add Transaction</button>
+    </div>
+  </div>
+  <div class="content"><div class="panel"><div id="all-tx-list"></div></div></div>
+</div>
+
+
+<!-- REPORTS -->
+<div class="main" id="view-reports">
+  <div class="topbar"><div class="page-title">Reports</div></div>
+  <div class="content">
+    <div class="report-tabs">
+      <button class="report-tab active" onclick="switchReport('monthly',this)">Monthly</button>
+      <button class="report-tab" onclick="switchReport('category',this)">By Category</button>
+      <button class="report-tab" onclick="switchReport('trend',this)">Savings Trend</button>
+    </div>
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:16px" id="report-title">Monthly Breakdown</div>
+        <div class="chart-wrap" style="height:260px"><canvas id="reportChart"></canvas></div>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:16px">Top Categories</div>
+        <div id="top-cats"></div>
+      </div>
+    </div>
+    <div class="panel" style="margin-top:20px">
+      <div class="panel-title" style="margin-bottom:16px">Income vs Expenses — Last 6 Months</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="trendChart"></canvas></div>
+    </div>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div class="main" id="view-settings">
+  <div class="topbar"><div class="page-title">Customize</div></div>
+  <div class="content">
+    <div class="two-col">
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:4px">Appearance</div>
+        <div class="setting-row">
+          <div><div class="setting-key">Accent Color</div><div class="setting-desc">Changes highlights across the app</div></div>
+          <div class="color-swatches">
+            <div class="swatch selected" style="background:#6c63ff" onclick="setAccent('#6c63ff',this)"></div>
+            <div class="swatch" style="background:#00d4aa" onclick="setAccent('#00d4aa',this)"></div>
+            <div class="swatch" style="background:#ff6b6b" onclick="setAccent('#ff6b6b',this)"></div>
+            <div class="swatch" style="background:#ffa94d" onclick="setAccent('#ffa94d',this)"></div>
+            <div class="swatch" style="background:#63b3ed" onclick="setAccent('#63b3ed',this)"></div>
+            <div class="swatch" style="background:#a855f7" onclick="setAccent('#a855f7',this)"></div>
+          </div>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-key">Currency</div><div class="setting-desc">Shown next to all amounts</div></div>
+          <select class="form-input" style="width:90px;padding:6px 10px" id="currency-select" onchange="setCurrency(this.value)">
+            <option value="৳">৳ BDT</option>
+            <option value="$">$ USD</option>
+            <option value="€">€ EUR</option>
+            <option value="£">£ GBP</option>
+            <option value="¥">¥ JPY</option>
+            <option value="₹">₹ INR</option>
+          </select>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-key">Compact Numbers</div><div class="setting-desc">Show 1.2k instead of 1,200</div></div>
+          <button class="toggle-switch" id="toggle-compact" onclick="toggleSetting('compact',this)"></button>
+        </div>
+        <div class="setting-row">
+          <div><div class="setting-key">Animations</div><div class="setting-desc">Smooth hover &amp; transitions</div></div>
+          <button class="toggle-switch on" id="toggle-anim" onclick="toggleSetting('anim',this)"></button>
+        </div>
+      </div>
+      <div class="panel">
+        <div class="panel-title" style="margin-bottom:16px">Profile</div>
+        <div class="form-group"><label class="form-label">Display Name</label><input class="form-input" id="name-input" value="Araf" placeholder="Your name"></div>
+        <button class="btn btn-primary" onclick="saveName()" style="width:100%;justify-content:center">Save Name</button>
+        <div style="margin-top:24px;padding-top:20px;border-top:1px solid var(--border)">
+          <div class="setting-key" style="margin-bottom:6px">Danger Zone</div>
+          <div class="setting-desc" style="margin-bottom:12px">Permanently remove all your data</div>
+          <button class="btn btn-danger" onclick="clearData()" style="width:100%;justify-content:center">Clear All Data</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ADD TX MODAL -->
+<div class="overlay" id="tx-overlay" onclick="closeModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title">Add Transaction</div>
+    <div class="type-toggle">
+      <button class="type-btn active-expense" id="type-expense" onclick="setType('expense')">Expense</button>
+      <button class="type-btn" id="type-income" onclick="setType('income')">Income</button>
+      <button class="type-btn" id="type-transfer" onclick="setType('transfer')">Transfer</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input class="form-input amount-input" id="tx-amount" type="number" placeholder="0.00" min="0">
+    </div>
+    <!-- Normal expense/income source selector -->
+    <div id="normal-section">
+      <div class="divider-text">Pay From</div>
+      <div class="source-grid" id="source-grid"></div>
+      <div id="cat-section">
+        <div class="divider-text">Quick Category</div>
+        <div class="quick-grid" id="quick-grid"></div>
+      </div>
+    </div>
+    <!-- Transfer from/to selectors -->
+    <div id="transfer-section" style="display:none">
+      <div class="divider-text">Transfer Between</div>
+      <div class="transfer-select">
+        <select id="transfer-from" onchange="updateTransferSelects('from')"></select>
+        <div class="transfer-arrow-icon">→</div>
+        <select id="transfer-to" onchange="updateTransferSelects('to')"></select>
+      </div>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Description</label>
+      <input class="form-input" id="tx-desc" placeholder="What was it for?">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="tx-date" type="date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveTransaction()">Save</button>
+    </div>
+  </div>
+</div>
+
+
+<div class="toast" id="toast">✅ Saved</div>
+
+<!-- ADD DEBT MODAL -->
+<div class="overlay" id="debt-overlay" onclick="closeDebtModalOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="debt-modal-title">Add Lent / Borrowed</div>
+    <div class="form-group">
+      <label class="form-label">Person</label>
+      <input class="form-input" id="debt-name" placeholder="Who's this with?" list="debt-name-list">
+      <datalist id="debt-name-list"></datalist>
+    </div>
+    <div class="debt-direction">
+      <button class="debt-dir-btn sel-owed" id="dir-owed" onclick="setDebtDir('owed')">They owe me</button>
+      <button class="debt-dir-btn" id="dir-owe" onclick="setDebtDir('owe')">I owe them</button>
+    </div>
+    <div class="form-group">
+      <label class="form-label">Amount</label>
+      <input class="form-input amount-input" id="debt-amount" type="number" placeholder="0.00" min="0">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Note</label>
+      <input class="form-input" id="debt-desc" placeholder="What's it for? (optional)">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Date</label>
+      <input class="form-input" id="debt-date" type="date">
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDebtModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveDebtEntry()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- DEBT DETAIL MODAL -->
+<div class="overlay" id="debt-detail-overlay" onclick="closeDebtDetailOutside(event)">
+  <div class="modal">
+    <div class="modal-title" id="debt-detail-name">Name</div>
+    <div id="debt-detail-summary" style="margin-bottom:18px"></div>
+    <div id="debt-detail-entries" style="max-height:280px;overflow-y:auto;margin-bottom:18px"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeDebtDetailModal()">Close</button>
+      <button class="btn btn-primary" onclick="addEntryForCurrentDebt()">+ Add Entry</button>
+    </div>
+  </div>
+</div>
+
+<script src="script.js"></script>
+</body>
+</html>
